@@ -192,7 +192,7 @@ function renderGate(bundle) {
       const jsonText = await decryptPayload(bundle, name);
       const data = JSON.parse(jsonText);
       sessionStorage.removeItem("nexo-ivan-attempts");
-      renderDownloads(data, jsonText);
+      renderViewer(data, jsonText);
     } catch {
       status.textContent = "El enlace es inválido, está incompleto o fue alterado.";
       button.disabled = false;
@@ -201,18 +201,54 @@ function renderGate(bundle) {
   });
 }
 
-function renderDownloads(data, jsonText) {
-  card(`
-    <div class="verified">✓ Identidad acreditada</div>
-    <h1>Entrega disponible.</h1>
-    <p class="lead">Las respuestas de Rafael Toledo Navarro están listas para descarga. Elige el formato que necesites.</p>
-    <div class="downloads">
-      <button class="download" data-format="json"><span>JSON</span><strong>Datos estructurados</strong><small>Para sistemas y respaldo</small></button>
-      <button class="download" data-format="txt"><span>TXT</span><strong>Lectura sencilla</strong><small>Documento de texto</small></button>
-      <button class="download" data-format="xml"><span>XML</span><strong>Intercambio técnico</strong><small>Formato interoperable</small></button>
-    </div>
-    <p class="warning">Documento privado de NEXO. No compartas el archivo ni este enlace con terceros.</p>
-  `);
+const SECTIONS = [
+  { id: 1, roman: "I", title: "Información general", description: "Los datos esenciales para conocerte.", from: 1, to: 5 },
+  { id: 2, roman: "II", title: "Tu historia", description: "Las experiencias que explican tu recorrido.", from: 6, to: 9 },
+  { id: 3, roman: "III", title: "Experiencia", description: "Lo que sabes hacer y lo que disfrutas aportar.", from: 10, to: 14 },
+  { id: 4, roman: "IV", title: "Tu relación con NEXO", description: "Tu motivación, significado e impacto esperado.", from: 15, to: 18 },
+  { id: 5, roman: "V", title: "Liderazgo", description: "Cómo decides, diriges y resuelves tensiones.", from: 19, to: 23 },
+  { id: 6, roman: "VI", title: "Visión", description: "El lugar que imaginas construir a largo plazo.", from: 24, to: 26 },
+  { id: 7, roman: "VII", title: "Fortalezas", description: "El valor distintivo que aportas al equipo.", from: 27, to: 30 },
+  { id: 8, roman: "VIII", title: "Disponibilidad", description: "Tu tiempo y los recursos que puedes sumar.", from: 31, to: 32 },
+  { id: 9, roman: "IX", title: "Cultura", description: "Los principios que deben sostener la comunidad.", from: 33, to: 35 },
+  { id: 10, roman: "X", title: "Reflexión final", description: "Tu rol, tus decisiones y el legado que buscas.", from: 36, to: 40 }
+];
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function answerText(value) {
+  if (value === null || value === undefined || value === "") return "Sin respuesta";
+  if (Array.isArray(value)) return value.map(answerText).join(", ");
+  if (typeof value !== "object") return String(value);
+  return Object.values(value).map(answerText).join(" ");
+}
+
+function answerMarkup(value) {
+  if (value === null || value === undefined || value === "") return `<p class="answer-empty">Sin respuesta</p>`;
+  if (Array.isArray(value)) {
+    return `<div class="answer-tags">${value.map((item) => `<span>${escapeHtml(answerText(item))}</span>`).join("")}</div>`;
+  }
+  if (typeof value === "object") {
+    const labels = { choice: "Elección", reason: "Motivo", score: "Nivel", position: "Puesto" };
+    return `<dl class="answer-details">${Object.entries(value).map(([key, item]) => `
+      <div><dt>${escapeHtml(labels[key] || key)}</dt><dd>${escapeHtml(answerText(item))}</dd></div>`).join("")}</dl>`;
+  }
+  return String(value).split(/\n{2,}/).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+}
+
+function normalizedResponses(data) {
+  if (Array.isArray(data.responses)) return data.responses.slice().sort((a, b) => Number(a.number) - Number(b.number));
+  return Object.entries(data).map(([question, answer], index) => ({ number: index + 1, question, answer }));
+}
+
+function viewerDownloadBindings(data, jsonText) {
   document.querySelectorAll("[data-format]").forEach((button) => {
     button.addEventListener("click", () => {
       const format = button.dataset.format;
@@ -221,6 +257,144 @@ function renderDownloads(data, jsonText) {
       if (format === "xml") download("rafael-toledo-navarro-nexo.xml", `<?xml version="1.0" encoding="UTF-8"?>\n${toXml(data)}\n`, "application/xml;charset=utf-8");
     });
   });
+}
+
+function renderViewer(data, jsonText) {
+  const responses = normalizedResponses(data);
+  let activeSection = 1;
+  let displayMode = "section";
+  let compact = false;
+  let query = "";
+
+  app.innerHTML = `
+    <section class="viewer" aria-label="Visor privado de respuestas">
+      <aside class="viewer-rail">
+        <div class="rail-progress">
+          <div><span>Progreso general</span><strong>100%</strong></div>
+          <i><b></b></i>
+          <small>40 de 40 preguntas respondidas</small>
+        </div>
+        <nav class="section-nav" aria-label="Secciones del cuestionario">
+          ${SECTIONS.map((section) => `<button data-section="${section.id}" class="${section.id === 1 ? "active" : ""}"><span>${section.id}</span><b>${section.title}</b><em>Completa</em></button>`).join("")}
+        </nav>
+        <div class="rail-note"><strong>Documento privado</strong><p>Acceso cifrado y destinado exclusivamente a Iván Puentes.</p></div>
+      </aside>
+
+      <main class="viewer-main">
+        <header class="viewer-heading">
+          <div>
+            <p class="viewer-kicker">NEXO · Perfil fundador</p>
+            <h1>Rafael Toledo Navarro</h1>
+            <p>Cuestionario completo · 40 respuestas verificadas</p>
+          </div>
+          <div class="viewer-status"><span></span> Identidad acreditada</div>
+        </header>
+
+        <div class="mobile-tools">
+          <button id="mobile-sections" type="button">Secciones</button>
+          <button id="mobile-search" type="button">Buscar</button>
+        </div>
+
+        <section id="response-view" class="response-view" aria-live="polite"></section>
+      </main>
+
+      <aside class="viewer-tools">
+        <div class="tools-block search-block">
+          <label for="viewer-search">Buscar en las respuestas</label>
+          <input id="viewer-search" type="search" placeholder="Pregunta, tema o palabra…" autocomplete="off" />
+          <small id="search-count">40 respuestas disponibles</small>
+        </div>
+        <div class="tools-block">
+          <span class="tools-label">Vista</span>
+          <div class="segmented">
+            <button data-mode="section" class="active">Sección</button>
+            <button data-mode="all">Todas</button>
+          </div>
+          <label class="compact-toggle"><input id="compact-view" type="checkbox" /><span></span> Lectura compacta</label>
+        </div>
+        <div class="tools-block current-index">
+          <span class="tools-label">En esta sección</span>
+          <div id="question-index"></div>
+        </div>
+        <div class="tools-block export-block">
+          <span class="tools-label">Descargar copia</span>
+          <div class="export-buttons">
+            <button data-format="json"><b>JSON</b><small>Datos</small></button>
+            <button data-format="txt"><b>TXT</b><small>Lectura</small></button>
+            <button data-format="xml"><b>XML</b><small>Archivo</small></button>
+          </div>
+        </div>
+      </aside>
+      <button class="drawer-backdrop" id="drawer-backdrop" aria-label="Cerrar panel"></button>
+    </section>`;
+
+  const responseView = document.querySelector("#response-view");
+  const questionIndex = document.querySelector("#question-index");
+  const searchInput = document.querySelector("#viewer-search");
+  const searchCount = document.querySelector("#search-count");
+
+  function visibleResponses() {
+    const normalizedQuery = query.trim().toLocaleLowerCase("es");
+    if (normalizedQuery) {
+      return responses.filter((response) => `${response.question} ${answerText(response.answer)}`.toLocaleLowerCase("es").includes(normalizedQuery));
+    }
+    if (displayMode === "all") return responses;
+    const section = SECTIONS.find((item) => item.id === activeSection);
+    return responses.filter((response) => response.number >= section.from && response.number <= section.to);
+  }
+
+  function responseCard(response) {
+    return `<article class="response-card" id="question-${response.number}">
+      <div class="question-number">${response.number}</div>
+      <div><h2>${escapeHtml(response.question)}</h2><div class="answer">${answerMarkup(response.answer)}</div></div>
+    </article>`;
+  }
+
+  function paint() {
+    const section = SECTIONS.find((item) => item.id === activeSection);
+    const visible = visibleResponses();
+    document.querySelector(".viewer").classList.toggle("compact", compact);
+    responseView.innerHTML = `
+      <div class="section-heading">
+        <div><span>${query ? "Búsqueda" : displayMode === "all" ? "I–X" : `${section.roman}. ${section.title}`}</span>
+        <h2>${query ? `Resultados para “${escapeHtml(query)}”` : displayMode === "all" ? "Todas las respuestas" : section.description}</h2></div>
+        <strong>${visible.length} ${visible.length === 1 ? "respuesta" : "respuestas"}</strong>
+      </div>
+      <div class="responses-list">${visible.length ? visible.map(responseCard).join("") : `<div class="empty-search"><h2>No encontramos coincidencias.</h2><p>Prueba otra palabra o vuelve a una sección.</p></div>`}</div>`;
+    questionIndex.innerHTML = visible.slice(0, 8).map((response) => `<button data-jump="${response.number}"><span>${response.number}</span>${escapeHtml(response.question)}</button>`).join("");
+    searchCount.textContent = query ? `${visible.length} coincidencias` : "40 respuestas disponibles";
+    document.querySelectorAll("[data-section]").forEach((button) => button.classList.toggle("active", Number(button.dataset.section) === activeSection && !query));
+    document.querySelectorAll("[data-mode]").forEach((button) => button.classList.toggle("active", button.dataset.mode === displayMode));
+    document.querySelectorAll("[data-jump]").forEach((button) => button.addEventListener("click", () => document.querySelector(`#question-${button.dataset.jump}`)?.scrollIntoView({ behavior: "smooth", block: "start" })));
+  }
+
+  document.querySelectorAll("[data-section]").forEach((button) => button.addEventListener("click", () => {
+    activeSection = Number(button.dataset.section);
+    query = "";
+    searchInput.value = "";
+    displayMode = "section";
+    closeDrawers();
+    paint();
+    document.querySelector(".viewer-main").scrollTo({ top: 0, behavior: "smooth" });
+  }));
+  document.querySelectorAll("[data-mode]").forEach((button) => button.addEventListener("click", () => {
+    displayMode = button.dataset.mode;
+    query = "";
+    searchInput.value = "";
+    paint();
+  }));
+  searchInput.addEventListener("input", () => { query = searchInput.value; paint(); });
+  document.querySelector("#compact-view").addEventListener("change", (event) => { compact = event.target.checked; paint(); });
+
+  const viewer = document.querySelector(".viewer");
+  const backdrop = document.querySelector("#drawer-backdrop");
+  function closeDrawers() { viewer.classList.remove("sections-open", "tools-open"); }
+  document.querySelector("#mobile-sections").addEventListener("click", () => viewer.classList.toggle("sections-open"));
+  document.querySelector("#mobile-search").addEventListener("click", () => { viewer.classList.toggle("tools-open"); setTimeout(() => searchInput.focus(), 100); });
+  backdrop.addEventListener("click", closeDrawers);
+
+  viewerDownloadBindings(data, jsonText);
+  paint();
 }
 
 const hash = location.hash.slice(1);
