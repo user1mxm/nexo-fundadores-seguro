@@ -71,6 +71,15 @@
 .export-buttons b,.export-buttons small{display:block}.export-buttons b{font-size:.64rem;letter-spacing:.06em}.export-buttons small{margin-top:4px;color:#696675;font-size:.55rem}
 .drawer-backdrop{display:none}
 
+/* Unified entry portal. */
+.home-actions{display:grid;gap:10px;margin-top:32px}
+.home-action{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:14px;row-gap:4px;align-items:center;min-height:78px;padding:15px 17px;border:1px solid #d1cded35;border-radius:12px;background:linear-gradient(145deg,#131623d9,#090c14e6);color:var(--ink);text-decoration:none;transition:.2s}
+.home-action:hover{border-color:#9d88ff;transform:translateY(-1px);box-shadow:0 16px 34px #0005}
+.home-action>span{grid-row:1/3;display:grid;place-items:center;width:34px;height:34px;border:1px solid #7465af;border-radius:50%;color:#aa94ff;font-size:.64rem;font-weight:700}
+.home-action>strong{font-size:.86rem}.home-action>small{color:#817f90;font-size:.68rem;line-height:1.35}
+.home-action-primary{border-color:#8067ff66;background:linear-gradient(112deg,#38286b99,#16132ad9 72%)}
+.home-action-primary>span{color:#fff;background:#7251ff;border-color:#a18cff;box-shadow:0 0 18px #7251ff66}
+
 @media(max-width:1120px){
   .viewer{grid-template-columns:250px minmax(0,1fr)}
   .viewer-tools{position:fixed;z-index:12;right:0;top:76px;bottom:0;width:min(340px,88vw);transform:translateX(102%);transition:transform .24s ease;box-shadow:-30px 0 80px #000a}

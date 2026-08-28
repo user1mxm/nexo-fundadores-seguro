@@ -1,6 +1,13 @@
 {
   "cleanUrls": true,
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/cuestionario", "destination": "/questionnaire" },
+    { "source": "/admin", "destination": "/questionnaire" },
+    { "source": "/entrega", "destination": "/entrega-qcphnslvkr9g1fsp" },
+    { "source": "/(.*)", "destination": "/" }
+  ],
   "headers": [{
     "source": "/(.*)",
     "headers": [

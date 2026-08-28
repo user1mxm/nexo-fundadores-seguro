@@ -1,4 +1,5 @@
 const CANONICAL_RECIPIENT = "IVAN PUENTES";
+const AUTHORIZED_RECIPIENTS = new Set([CANONICAL_RECIPIENT, "RAFAEL TOLEDO NAVARRO"]);
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 30_000;
 
@@ -97,11 +98,31 @@ function card(content) {
   app.innerHTML = `<section class="shell"><div class="card">${content}</div><p class="footnote">NEXO · Documento privado · No reenviar el enlace</p></section>`;
 }
 
+function renderHome() {
+  card(`
+    <p class="kicker">NEXO · Plataforma unificada</p>
+    <h1>Un solo acceso para construir y revisar.</h1>
+    <p class="lead">Cuestionario, administración y entrega privada reunidos en una experiencia segura para Rafael Toledo Navarro e Ivan Puentes.</p>
+    <div class="home-actions">
+      <a class="home-action home-action-primary" href="/cuestionario">
+        <span>01</span><strong>Responder cuestionario</strong><small>Completar o continuar las 40 respuestas</small>
+      </a>
+      <a class="home-action" href="/entrega">
+        <span>02</span><strong>Abrir entrega privada</strong><small>Viewer cifrado y descargas JSON, TXT y XML</small>
+      </a>
+      <a class="home-action" href="/admin">
+        <span>03</span><strong>Panel administrativo</strong><small>Acceso seguro, revisión y exportación</small>
+      </a>
+    </div>
+    <div class="security"><span>◆</span><p><strong>Accesos separados por función</strong><br />El cuestionario conserva su sesión privada; la entrega permanece cifrada hasta acreditar una identidad autorizada.</p></div>
+  `);
+}
+
 function renderPrepare() {
   card(`
     <p class="kicker">Preparar entrega</p>
-    <h1>Crea el enlace privado para Iván.</h1>
-    <p class="lead">Selecciona la exportación JSON completa de Rafael. El archivo se cifra en este dispositivo y no se envía a ningún servidor.</p>
+    <h1>Crea un enlace privado compartido.</h1>
+    <p class="lead">Selecciona la exportación JSON completa de Rafael. El archivo se cifra en este dispositivo y queda disponible únicamente para Rafael e Ivan.</p>
     <label class="drop" for="json-file">
       <span class="drop-icon">↥</span>
       <strong>Seleccionar exportación JSON</strong>
@@ -122,11 +143,11 @@ function renderPrepare() {
       const bundle = await encryptPayload(text);
       const url = `${location.origin}${location.pathname}#${bundle}`;
       result.innerHTML = `
-        <div class="success"><span>✓</span><div><strong>Enlace creado</strong><small>El contenido está cifrado y sólo se abre al acreditar IVAN PUENTES.</small></div></div>
+        <div class="success"><span>✓</span><div><strong>Enlace creado</strong><small>El contenido está cifrado y sólo se abre al acreditar a Rafael Toledo Navarro o IVAN PUENTES.</small></div></div>
         <label class="field-label" for="share-url">Enlace exclusivo</label>
         <textarea id="share-url" class="share-url" readonly rows="4"></textarea>
-        <button id="copy-link" class="primary" type="button">Copiar enlace para Iván</button>
-        <p class="warning">Quien tenga el enlace y conozca el nombre podrá abrirlo. Envíalo únicamente a Iván.</p>`;
+        <button id="copy-link" class="primary" type="button">Copiar enlace privado</button>
+        <p class="warning">Quien tenga el enlace y conozca uno de los nombres autorizados podrá abrirlo. Compártelo únicamente entre Rafael e Ivan.</p>`;
       document.querySelector("#share-url").value = url;
       document.querySelector("#copy-link").addEventListener("click", async () => {
         await navigator.clipboard.writeText(url);
@@ -152,7 +173,7 @@ function renderGate(bundle) {
   card(`
     <p class="kicker">Entrega privada</p>
     <h1>Acredita tu identidad.</h1>
-    <p class="lead">Este enlace contiene una entrega cifrada destinada exclusivamente a Iván Puentes.</p>
+    <p class="lead">Este enlace contiene una entrega cifrada destinada exclusivamente a Rafael Toledo Navarro e Ivan Puentes.</p>
     <form id="access-form" novalidate>
       <label class="field-label" for="recipient">Nombre completo autorizado</label>
       <input id="recipient" class="text-field" type="text" autocomplete="name" spellcheck="false" placeholder="Escribe tu nombre completo" required />
@@ -175,7 +196,7 @@ function renderGate(bundle) {
       return;
     }
     const name = normalizeName(input.value);
-    if (name !== CANONICAL_RECIPIENT) {
+    if (!AUTHORIZED_RECIPIENTS.has(name)) {
       state.count += 1;
       if (state.count >= MAX_ATTEMPTS) {
         state.count = 0;
@@ -189,7 +210,7 @@ function renderGate(bundle) {
     button.disabled = true;
     button.textContent = "Descifrando…";
     try {
-      const jsonText = await decryptPayload(bundle, name);
+      const jsonText = await decryptPayload(bundle, CANONICAL_RECIPIENT);
       const data = JSON.parse(jsonText);
       sessionStorage.removeItem("nexo-ivan-attempts");
       renderViewer(data, jsonText);
@@ -277,7 +298,7 @@ function renderViewer(data, jsonText) {
         <nav class="section-nav" aria-label="Secciones del cuestionario">
           ${SECTIONS.map((section) => `<button data-section="${section.id}" class="${section.id === 1 ? "active" : ""}"><span>${section.id}</span><b>${section.title}</b><em>Completa</em></button>`).join("")}
         </nav>
-        <div class="rail-note"><strong>Documento privado</strong><p>Acceso cifrado y destinado exclusivamente a Iván Puentes.</p></div>
+        <div class="rail-note"><strong>Documento privado</strong><p>Acceso cifrado para Rafael Toledo Navarro e Ivan Puentes.</p></div>
       </aside>
 
       <main class="viewer-main">
@@ -400,4 +421,4 @@ function renderViewer(data, jsonText) {
 const hash = location.hash.slice(1);
 if (hash.startsWith("v1.")) renderGate(hash);
 else if (new URLSearchParams(location.search).has("preparar")) renderPrepare();
-else renderGate("");
+else renderHome();
